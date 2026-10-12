@@ -1,0 +1,18 @@
+# Example informational notification. Change the GUID to your character's real GUID.
+alias: WoW Forever observed death
+triggers:
+  - trigger: event
+    event_type: forever_ha_event
+conditions:
+  - condition: template
+    value_template: >-
+      {{ not trigger.event.data.historical
+         and trigger.event.data.dataset == 'combat_log'
+         and trigger.event.data.record.payload.get('event') == 'UNIT_DIED'
+         and trigger.event.data.record.payload.get('destination_guid') == 'Player-REALM-ID' }}
+actions:
+  - action: persistent_notification.create
+    data:
+      title: WoW Forever
+      message: Your character's death was recorded in the combat log.
+mode: queued

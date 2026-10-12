@@ -1,0 +1,14 @@
+__pycache__/
+.DS_Store
+.pytest_cache/
+.venv/
+*.egg-info/
+build/
+dist/
+config.json
+!examples/config.json
+*.sqlite3*
+
+# Reproducible generated reports
+/docs/api-audit.json
+/docs/test-results.txt

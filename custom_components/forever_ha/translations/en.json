@@ -1,0 +1,7 @@
+{
+  "title": "WoW Forever",
+  "config": {
+    "step": {"user": {"title": "Connect WoW Forever", "description": "Install ForeverHA in WoW and run its companion on your gaming computer. Configure the companion with this Home Assistant URL and an administrator access token. This integration receives file exports; it never controls the game."}},
+    "abort": {"already_configured": "WoW Forever is already configured."}
+  }
+}

@@ -1,0 +1,9 @@
+## Interface: 16001
+## Title: ForeverHA
+## Notes: Observational character export for Home Assistant
+## Author: ForeverHA contributors
+## Version: 0.1.1
+## SavedVariables: ForeverHADB
+Core.lua
+Collectors.lua
+Events.lua

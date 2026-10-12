@@ -1,0 +1,16 @@
+{
+  "home_assistant_url": "http://homeassistant.local:8123",
+  "token_env": "FOREVER_HA_TOKEN",
+  "installations": [
+    {
+      "id": "gaming-pc",
+      "path": "/path/to/your/Forever/client",
+      "combat_log": true,
+      "chat_log": true,
+      "import_history": true,
+      "log_timezone": "America/Los_Angeles"
+    }
+  ],
+  "max_queue_records": 20000,
+  "max_queue_bytes": 104857600
+}

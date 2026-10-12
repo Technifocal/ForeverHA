@@ -1,0 +1,27 @@
+# Replace every example entity ID with the corresponding entity from your devices.
+title: WoW Forever
+views:
+  - title: Character
+    path: character
+    cards:
+      - type: entities
+        title: Companion
+        entities:
+          - binary_sensor.game_files_companion_connected
+          - sensor.game_files_queued_records
+          - sensor.game_files_dropped_bridge_records
+      - type: entities
+        title: Character snapshots — check their age
+        entities:
+          - sensor.tester_character_snapshot_age
+          - sensor.tester_level
+          - sensor.tester_gold
+          - sensor.tester_zone
+          - sensor.tester_health_snapshot
+      - type: entities
+        title: Observed combat log totals
+        entities:
+          - sensor.tester_logged_damage_done
+          - sensor.tester_logged_effective_healing_done
+          - sensor.tester_logged_deaths
+          - sensor.tester_last_encounter_logged_dps
