@@ -2,7 +2,7 @@
 
 ForeverHA collects broad character data in WoW, reads the files WoW normally writes, and pushes observations to Home Assistant without MQTT. The Lua addon is portable. Its Python companion runs on Windows, macOS, and Linux.
 
-**Addon/integration version 0.1.1 (companion 0.1.0):** implemented and tested offline against Lua 5.1 and Home Assistant Core 2026.10.1. API names were audited against Forever UI source **1.60.1 (70338), interface 16001**. An in-game smoke test is still required; no live Forever client was available during development. Windows/Linux test workflows are provided but have not been run here.
+**Addon/integration/companion version 0.1.1:** implemented and tested offline against Lua 5.1 and Home Assistant Core 2026.10.1. API names were audited against Forever UI source **1.60.1 (70338), interface 16001**. An in-game smoke test is still required; no live Forever client was available during development. Windows/Linux test workflows are provided but have not been run here.
 
 ## What updates live
 
@@ -63,7 +63,7 @@ python -m pip install ./companion
 cp examples/config.json config.json
 ```
 
-Alternatively, install the included `forever_ha_bridge-0.1.0-py3-none-any.whl`; pip will install its dependencies. Native executable installers are not included.
+Alternatively, install the included `forever_ha_bridge-0.1.1-py3-none-any.whl`; pip will install its dependencies. Native executable installers are not included.
 
 Edit `config.json` with your URL and client path. An installation `id` identifies the gaming computer consistently; use a different ID on each computer. Use `accounts` to restrict SavedVariables to named account folders, or omit it to collect all accounts. Game logs are installation-wide and do not contain account-folder names.
 
@@ -75,11 +75,29 @@ forever-ha --discover
 
 Omit the `installations` field to use discovery. Manual paths work for custom Windows drives, Wine/Proton prefixes, and unsupported launcher layouts. Verify the detected client is Forever.
 
-This command prompts for the token without putting it in command history, then starts the bridge; it works in the activated environment on all three operating systems:
+Check your configuration before starting. This reads no credentials from disk, does not connect to Home Assistant, and writes no state:
 
 ```sh
-python -c "import getpass,os,subprocess; os.environ['FOREVER_HA_TOKEN']=getpass.getpass('Home Assistant token: '); subprocess.run(['forever-ha','--config','config.json'])"
+forever-ha --config config.json --check-config
 ```
+
+Start with a secure token prompt; the token remains in memory for this run and is not saved:
+
+```sh
+forever-ha --config config.json --prompt-token
+```
+
+Normal synchronization discovers all character GUIDs automatically. `--character-guid` only filters queries made with `--dataset`.
+
+### Windows setup troubleshooting
+
+The old 0.1.0 companion hid setup failures behind `Configuration/setup error (ValueError)`. Upgrade it with `python -m pip install --upgrade ./companion` from the source checkout, in the same Python environment used to run it. Version 0.1.1 reports the specific setup problem. You can also install the 0.1.1 wheel with pip.
+
+Use an absolute `--config` path if you start from another directory. In JSON game paths, use forward slashes, for example `D:/Games/World of Warcraft/your-client-folder`. Replace that example with the actual folder containing `WTF` and `Logs`; do not use `Interface/AddOns` or the parent launcher folder. Run `forever-ha --discover` to check detected installations; use a manual path if yours is missing.
+
+Use Home Assistant's base URL, such as `http://homeassistant.local:8123`, with no dashboard, `/hacs`, or `/api/websocket` suffix. For a Nabu Casa URL, use `https://YOUR-HOST.ui.nabu.casa` with no page path.
+
+A token environment variable must be set in the terminal that starts the companion. `--prompt-token` avoids that requirement. Create an administrator long-lived access token from your Home Assistant profile; do not put it in `config.json` or share it in error reports. Restart Home Assistant after installing the integration and add **WoW Forever** under **Settings → Devices & services** before running the companion. HACS downloading alone does not configure it.
 
 You may instead set `FOREVER_HA_TOKEN` in the environment through your service manager or terminal. Credentials are never written into the addon or SQLite outbox. Keep your service configuration private.
 

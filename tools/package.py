@@ -4,6 +4,7 @@ import zipfile
 import hashlib
 import json
 import re
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT.parent
@@ -31,7 +32,8 @@ def main():
     zip_tree(integration, ROOT / "custom_components", "custom_components/")
     zip_tree(source, ROOT, "ForeverHA/")
     checksums = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (addon, integration, source)}
-    for p in OUT.glob("forever_ha_bridge-0.1.0-*.whl"):
+    companion_version = tomllib.loads((ROOT / "companion/pyproject.toml").read_text())["project"]["version"]
+    for p in OUT.glob(f"forever_ha_bridge-{companion_version}-*.whl"):
         checksums[p.name] = hashlib.sha256(p.read_bytes()).hexdigest()
     (OUT / "SHA256SUMS.txt").write_text("\n".join(f"{digest}  {name}" for name, digest in checksums.items()) + "\n")
     bundle = OUT / f"ForeverHA-{version}.zip"
@@ -39,7 +41,7 @@ def main():
         for filename in checksums:
             archive.write(OUT / filename, filename)
         archive.write(OUT / "SHA256SUMS.txt", "SHA256SUMS.txt")
-        archive.writestr("START-HERE.md", f"# ForeverHA {version}\n\nExtract {source.name} and open ForeverHA/README.md for setup.\n\nThe addon ZIP goes into the Forever client's Interface/AddOns directory.\nThe Home Assistant ZIP goes into its configuration directory, followed by a restart and adding the WoW Forever integration.\nInstall the companion wheel with Python 3.11 or newer, or install from the companion source directory.\n\nFor the 0.1.1 crash hotfix, replace only the addon folder; preserve SavedVariables. The companion remains at 0.1.0; the Home Assistant integration is {ha_version}.\n\nThis release passed offline regression tests. Confirmation of the hotfix inside the live Forever client remains pending.\n")
+        archive.writestr("START-HERE.md", f"# ForeverHA {version}\n\nExtract {source.name} and open ForeverHA/README.md for setup.\n\nThe addon ZIP goes into the Forever client's Interface/AddOns directory.\nThe Home Assistant ZIP goes into its configuration directory, followed by a restart and adding the WoW Forever integration.\nInstall the companion wheel with Python 3.11 or newer, or install from the companion source directory.\n\nFor the 0.1.1 crash hotfix, replace only the addon folder; preserve SavedVariables. The companion is {companion_version}; the Home Assistant integration is {ha_version}.\n\nThis release passed offline regression tests. Confirmation of the hotfix inside the live Forever client remains pending.\n")
     checksums[bundle.name] = hashlib.sha256(bundle.read_bytes()).hexdigest()
     (OUT / "SHA256SUMS.txt").write_text("\n".join(f"{digest}  {name}" for name, digest in checksums.items()) + "\n")
     print(json.dumps(checksums, indent=2))
