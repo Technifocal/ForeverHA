@@ -7,9 +7,9 @@ conditions:
   - condition: template
     value_template: >-
       {{ not trigger.event.data.historical
-         and trigger.event.data.dataset == 'combat_log'
-         and trigger.event.data.record.payload.get('event') == 'UNIT_DIED'
-         and trigger.event.data.record.payload.get('destination_guid') == 'Player-REALM-ID' }}
+         and trigger.event.data.dataset == 'addon_events'
+         and trigger.event.data.record.payload.get('event') == 'PLAYER_DEAD'
+         and trigger.event.data.record.get('character_guid') == 'Player-REALM-ID' }}
 actions:
   - action: persistent_notification.create
     data:

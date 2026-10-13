@@ -117,6 +117,28 @@ def poll(config, store):
     return problems
 
 
+def pixel_settings(config, force=False):
+    settings = config.get("pixel_transport", {})
+    if not isinstance(settings, dict):
+        raise ConfigurationError("pixel_transport must be an object with enabled, installation, and poll_hz fields.")
+    enabled = settings.get("enabled", False)
+    if type(enabled) is not bool:
+        raise ConfigurationError("pixel_transport.enabled must be true or false.")
+    if not (enabled or force):
+        return None
+    if sys.platform != "win32":
+        raise ConfigurationError("Realtime screen capture is currently Windows-only. Omit --realtime and disable pixel_transport on other systems.")
+    installation = settings.get("installation")
+    if installation is None and len(config["installations"]) == 1:
+        installation = config["installations"][0]["id"]
+    if installation not in [r["id"] for r in config["installations"]]:
+        raise ConfigurationError("Set pixel_transport.installation to one configured installation ID; this is required with multiple game directories.")
+    hz = settings.get("poll_hz", 8)
+    if type(hz) not in (int, float) or not 4 <= hz <= 8:
+        raise ConfigurationError("pixel_transport.poll_hz must be between 4 and 8.")
+    return {"installation": installation, "hz": hz}
+
+
 async def run(config, once=False):
     state_dir = Path(config.get("state_directory", default_state_directory())).expanduser().resolve()
     if any(state_dir == r["path"] or r["path"] in state_dir.parents for r in config["installations"]):
@@ -137,12 +159,27 @@ async def run(config, once=False):
     retry_at, delay, heartbeat_at = 0.0, 1.0, 0.0
     last_losses, last_problems = 0, None
     ids = [r["id"] for r in config["installations"]]
+    feed, feed_task = None, None
+    if config.get("_pixel_settings"):
+        from .pixel import PixelFeed
+        feed = PixelFeed(**config["_pixel_settings"])
+        feed_task = asyncio.create_task(feed.run(store, stopping))
+        LOG.info("Screen feed enabled: active WoW window only, up to %s captures/second.", feed.hz)
+    files_at, problems, diagnostics, feed_problem = 0.0, [], {}, None
     try:
         while not stopping.is_set():
             started = time.monotonic()
-            problems = poll(config, store)
+            if started >= files_at:
+                problems = poll(config, store)
+                files_at = started + 1
+                diagnostics = dict(store.diagnostics(), file_errors=problems)
             # sqlite connection and source checkpoints stay on a single thread.
-            diagnostics = dict(store.diagnostics(), file_errors=problems)
+            if feed:
+                diagnostics["pixel_feed"] = dict(feed.status)
+                problem = feed.status.get("resource_stop") or feed.status.get("error")
+                if problem and problem != feed_problem:
+                    LOG.warning("Screen feed paused (%s); file synchronization continues", problem)
+                feed_problem = problem
             if problems != last_problems and problems:
                 LOG.warning("%s file(s) could not be read; see Home Assistant bridge diagnostics", len(problems))
             last_problems = problems
@@ -170,12 +207,15 @@ async def run(config, once=False):
                     delay = min(60.0, delay * 2)
             if once:
                 return 0 if not store.batch() else 1
-            remaining = max(0.01, 1 - (time.monotonic() - started))
+            remaining = max(0.01, (0.125 if feed else 1) - (time.monotonic() - started))
             try:
                 await asyncio.wait_for(stopping.wait(), remaining)
             except TimeoutError:
                 pass
     finally:
+        stopping.set()
+        if feed_task:
+            await feed_task
         await transport.close()
         store.close()
     return 0
@@ -205,6 +245,7 @@ def main():
     parser.add_argument("--discover", action="store_true", help="List likely client directories and exit")
     parser.add_argument("--prompt-token", action="store_true", help="Securely prompt for the Home Assistant token for this run")
     parser.add_argument("--check-config", action="store_true", help="Check setup and report discovered game files without connecting or writing state")
+    parser.add_argument("--realtime", action="store_true", help="Read ForeverHA's small onscreen strip while WoW is active (Windows)")
     parser.add_argument("--once", action="store_true", help="Poll files and send one batch for diagnostics")
     parser.add_argument("--dataset", help="Query an exported dataset and exit")
     parser.add_argument("--installation", help="Installation ID for dataset query")
@@ -221,6 +262,7 @@ def main():
     try:
         token = getpass.getpass("Home Assistant access token: ") if args.prompt_token else None
         config = read_config(args.config, token, require_token=not args.check_config)
+        config["_pixel_settings"] = pixel_settings(config, args.realtime)
         if args.check_config:
             LOG.info("URL and game directories are valid. Token is %s.", "set" if config["token"] else "missing; use --prompt-token when starting")
             for install in config["installations"]:

@@ -7,6 +7,18 @@ from .entity import ForeverEntity, metadata, values
 
 # Dataset, field, display name, unit, live-only.
 METRICS = [
+    ("live_state", "health", "Live health", None, True),
+    ("live_state", "health_max", "Live maximum health", None, True),
+    ("live_state", "power", "Live power", None, True),
+    ("live_state", "power_max", "Live maximum power", None, True),
+    ("live_state", "level", "Live level", None, True),
+    ("live_state", "money_copper", "Live gold", "gold", True),
+    ("live_state", "xp", "Live experience", "XP", True),
+    ("live_state", "xp_max", "Live experience needed", "XP", True),
+    ("live_state", "rested_xp", "Live rested experience", "XP", True),
+    ("live_state", "zone", "Live zone", None, True),
+    ("live_state", "subzone", "Live subzone", None, True),
+    ("live_state", "dropped_pixel_packets", "Dropped screen packets", None, True),
     ("character", "level", "Level", None, False),
     ("character", "xp", "Experience", "XP", False),
     ("character", "xp_max", "Experience needed", "XP", False),
@@ -89,7 +101,8 @@ class ForeverSensor(ForeverEntity, SensorEntity):
     def available(self):
         status = metadata(self.record)["collection_status"]
         return (status in ("available", "partial", "restricted") and self.native_value is not None and
-                (not self.live or self.runtime.connected(self.device["installation"])))
+                (pixel_available(self.runtime, self.device) if self.dataset == "live_state" else
+                 (not self.live or self.runtime.connected(self.device["installation"]))))
 
     @property
     def extra_state_attributes(self):
@@ -125,4 +138,12 @@ class BridgeSensor(ForeverEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         bridge = self.runtime.model.data["bridges"].get(self.device["installation"], {})
-        return {"file_errors": bridge.get("file_errors", [])[:20], "last_heartbeat": bridge.get("last_heartbeat")}
+        return {"file_errors": bridge.get("file_errors", [])[:20], "last_heartbeat": bridge.get("last_heartbeat"),
+                "pixel_feed": bridge.get("pixel_feed", {})}
+
+
+def pixel_available(runtime, device):
+    feed = runtime.model.data["bridges"].get(device["installation"], {}).get("pixel_feed", {})
+    seen = feed.get("last_seen")
+    return bool(runtime.connected(device["installation"]) and feed.get("window") == "foreground" and
+                feed.get("character_guid") == device["guid"] and seen is not None and time.time() - seen < 15)

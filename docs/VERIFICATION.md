@@ -35,3 +35,9 @@ Offline API/source checks do not validate every Lua call's runtime signature, fe
 8. Repeat file-watching and transport smoke tests on Windows and Linux/Wine/Proton paths.
 
 Record results and update the coverage table before labeling this release validated in-game.
+
+## 0.2.0 validation
+
+New tests cover Lua-to-pixel-to-Python roundtrips, Unicode, fractional block widths and contrast, CRC corruption, queue bounds, texture reuse, urgent death preemption, repeated/missing/out-of-order chunks, message ID reuse, DOINK namespace isolation, secret/null values, CPU/handle limits, thread cleanup, source-ID preservation and HA deduplication persisted across restart. A Windows-only GDI allocation/resize leak test is included in the existing CI matrix; it is skipped on macOS. No live Forever client or Windows capture latency/CPU measurement is available locally.
+
+Local release run: 96 passed, one Windows-only GDI test skipped, one upstream Home Assistant deprecation warning. This does not substitute for the live Windows/Forever smoke test.

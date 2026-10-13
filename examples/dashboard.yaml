@@ -25,3 +25,11 @@ views:
           - sensor.tester_logged_effective_healing_done
           - sensor.tester_logged_deaths
           - sensor.tester_last_encounter_logged_dps
+      - type: entities
+        title: Live screen feed
+        entities:
+          - sensor.tester_live_health
+          - sensor.tester_live_gold
+          - sensor.tester_live_zone
+          - binary_sensor.tester_live_dead
+          - binary_sensor.tester_live_in_combat

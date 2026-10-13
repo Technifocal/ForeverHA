@@ -68,3 +68,16 @@ Blizzard's [Forever combat API definitions](https://raw.githubusercontent.com/Ge
 ## 0.1.1 crash mitigation
 
 No coroutine API is called. Deferred work runs on normal frame callbacks (at most 20 work items per tick), including nested achievement/recipe scans. Data getters are paused while entering/leaving the world and are not refreshed during logout. Collection backend queries require the relevant built-in window. Explicit nil arguments, quest headers with ID zero, empty-slot durability queries and guessed bank indices are excluded. These changes remove the entry point shown in the supplied crash reports; live-client confirmation remains pending.
+
+## 0.2.0 screen feed (Windows)
+
+| Dataset | Route | Availability |
+| --- | --- | --- |
+| Death, resurrection, chat, encounter, quest and achievement events | Pixel `addon_events` | Foreground/UI-visible, accessible event arguments; same event IDs as saved copies |
+| Health, power, death/combat/mounted flags, level, money, XP, zone | Pixel `live_state` | Accessible values only; secret values remain null; changes plus five-second heartbeat |
+| Inventories, collections, professions and other large snapshots | SavedVariables | Snapshot-only |
+| Raw binary addon messages | SavedVariables | Snapshot-only; omitted from pixel feed |
+| Damage/healing statistics and raw combat log | Game-written logs | Disk-flush dependent; no restricted combat API bypass |
+| macOS/Linux pixel capture | Unavailable | Existing file transport remains supported |
+
+Live entities become unavailable when the feed is inactive, stale, switched to another character, or stopped by its resource meter. Feed status is carried by ten-second companion heartbeats; availability updates therefore follow that cadence.

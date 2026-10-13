@@ -90,6 +90,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
             end
             F.worldReady = true
             F.refresh()
+            if F.pixel then F.pixel.setEnabled(F.db.settings.realtime == true) end
         end
     end
     if F.worldReady then
@@ -106,6 +107,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
     elapsedTotal, refreshTotal = elapsedTotal + elapsed, refreshTotal + elapsed
     if elapsedTotal >= 0.05 then elapsedTotal = 0; F.tick() end
     if refreshTotal >= 60 then refreshTotal = 0; F.refresh() end
+    if F.pixel then F.pixel.update(elapsed) end
 end)
 
 SLASH_FOREVERHA1 = "/foreverha"
@@ -125,11 +127,16 @@ SlashCmdList.FOREVERHA = function(message)
             F.call("LoggingCombat", category == "on"); F.call("LoggingChat", category == "on")
         end
         F.print("Combat: " .. tostring(F.call("LoggingCombat")) .. "; chat: " .. tostring(F.call("LoggingChat")))
+    elseif command == "realtime" then
+        if category == "on" or category == "off" then F.pixel.setEnabled(category == "on") end
+        if category == "test" then F.pixel.state(true) end
+        F.print("Screen feed: " .. F.pixel.status())
     elseif command == "status" then
         for name in pairs(F.collectors) do
             local data = F.character.datasets[name] or {}
             F.print(name .. ": " .. (data.status or "queued"))
         end
         F.print("Buffered event losses: " .. F.character.dropped_events)
-    else F.print("Commands: refresh, status, enable <category>, disable <category>, logging [on|off]") end
+        F.print("Screen feed: " .. F.pixel.status())
+    else F.print("Commands: refresh, status, enable <category>, disable <category>, logging [on|off], realtime [on|off|test]") end
 end

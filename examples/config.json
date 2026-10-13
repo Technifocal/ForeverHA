@@ -12,5 +12,10 @@
     }
   ],
   "max_queue_records": 20000,
-  "max_queue_bytes": 104857600
+  "max_queue_bytes": 104857600,
+  "pixel_transport": {
+    "enabled": false,
+    "installation": "gaming-pc",
+    "poll_hz": 8
+  }
 }

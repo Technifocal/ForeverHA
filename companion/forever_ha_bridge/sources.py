@@ -45,15 +45,18 @@ def batch_raw(envelopes):
 
 def snapshot(path, installation, account, checkpoint):
     stat = path.stat()
+    file_stat = [stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_dev, stat.st_ino]
+    if checkpoint.get("file_stat") == file_stat:
+        return [], checkpoint
     if stat.st_size > 64 * 1024 * 1024:
         raise LuaDataError("SavedVariables exceeds 64 MiB")
     data = path.read_bytes()
     after = path.stat()
-    if (stat.st_size, stat.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
+    if file_stat != [after.st_size, after.st_mtime_ns, after.st_ctime_ns, after.st_dev, after.st_ino]:
         return [], checkpoint  # Retry a write still in progress.
     fingerprint = digest(data)
     if checkpoint.get("hash") == fingerprint:
-        return [], checkpoint
+        return [], dict(checkpoint, file_stat=file_stat)
     db = loads(data.decode("utf-8-sig"))
     if not isinstance(db.get("characters", {}), dict) or not isinstance(db.get("settings", {}), dict):
         raise LuaDataError("Invalid SavedVariables structure")
@@ -93,7 +96,7 @@ def snapshot(path, installation, account, checkpoint):
                             "saved_variables", character.get("saved_at"), guid, build))
     snapshots = [e for e in out if e["dataset"] != "addon_events"]
     snapshots.extend(batch_raw([e for e in out if e["dataset"] == "addon_events"]))
-    return snapshots, {"hash": fingerprint, "event_marks": event_marks}
+    return snapshots, {"hash": fingerprint, "event_marks": event_marks, "file_stat": file_stat}
 
 
 def tail(path, installation, account, kind, checkpoint, timezone=None, import_history=True):

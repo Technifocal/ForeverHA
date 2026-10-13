@@ -35,7 +35,7 @@ class ForeverEntity(Entity):
             name += " – " + device["realm"]
         return DeviceInfo(identifiers={(DOMAIN, self.key)}, name=name,
                           manufacturer="Blizzard Entertainment", model="WoW Forever character" if device["guid"] else "ForeverHA companion",
-                          sw_version="0.1.0")
+                          sw_version="0.2.0")
 
     async def async_added_to_hass(self):
         self.async_on_remove(async_dispatcher_connect(self.hass, SIGNAL, self.async_write_ha_state))

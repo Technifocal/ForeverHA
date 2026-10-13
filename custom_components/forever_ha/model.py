@@ -81,6 +81,12 @@ class Model:
         if data and (data.get("version") != 1 or any(k not in data for k in ("devices", "watermarks", "bridges"))):
             raise ValueError("Unsupported integration storage schema; preserve storage and update the integration")
         self.data = data or {"version": 1, "devices": {}, "watermarks": {}, "bridges": {}}
+        if data and "addon_event_ranges" not in self.data:
+            # Seed upgrade deduplication from records retained by older versions.
+            self.data["addon_event_ranges"] = {}
+            for device in self.data["devices"].values():
+                for retained in device.get("datasets", {}).get("addon_events", {}).get("records", []):
+                    self._addon_event_seen(device["installation"], device["guid"], retained.get("payload", {}))
 
     def device(self, installation, guid, account=""):
         key = device_key(installation, guid, account)
@@ -109,6 +115,8 @@ class Model:
                 if not isinstance(records, list) or not 1 <= len(records) <= 128 or not all(isinstance(r, dict) for r in records):
                     raise ValueError("Invalid raw record batch")
                 for record in records:
+                    if dataset == "addon_events" and self._addon_event_seen(installation, guid, record):
+                        continue
                     individual = dict(envelope, payload=record, observed_at=record.get("observed_at", envelope.get("observed_at")))
                     self._append(device, dataset, individual)
                     observed = individual.get("observed_at")
@@ -145,6 +153,30 @@ class Model:
                 device["client_build"] = envelope.get("client_build") or device.get("client_build")
         self.data["watermarks"][stream] = sequence
         return ("accepted" if dataset in RAW_DATASETS else result), events
+
+    def _addon_event_seen(self, installation, guid, record):
+        """Persist source event IDs, independent of file/pixel/outbox sequence.
+
+        Disjoint ranges retain gaps: a later SavedVariables import may contain
+        events the pixel reader missed. Do not discard those via a high watermark.
+        """
+        session, sequence = record.get("session"), record.get("sequence")
+        if not guid or not isinstance(session, str) or not session or type(sequence) is not int or sequence < 1:
+            return False
+        stream = json.dumps([installation, guid, session], separators=(",", ":"))
+        ledger = self.data.setdefault("addon_event_ranges", {})
+        ranges = ledger.setdefault(stream, [])
+        for start, end in ranges:
+            if start <= sequence <= end:
+                return True
+        combined = []
+        for start, end in sorted(ranges + [[sequence, sequence]]):
+            if combined and start <= combined[-1][1] + 1:
+                combined[-1][1] = max(combined[-1][1], end)
+            else:
+                combined.append([start, end])
+        ledger[stream] = combined
+        return False
 
     def _append(self, device, dataset, envelope):
         old = device["datasets"].get(dataset, {"records": [], "retention_dropped": 0, "bytes": 0})

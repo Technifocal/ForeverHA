@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "forever-ha-bridge"
-version = "0.1.1"
+version = "0.2.0"
 description = "Read-only WoW Forever file bridge for Home Assistant"
 license = "MIT"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "licenses/DOINK.txt"]
 requires-python = ">=3.11"
 dependencies = ["websockets>=14,<18", "tzdata>=2025.1; sys_platform == 'win32'"]
 

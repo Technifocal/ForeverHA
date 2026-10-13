@@ -55,7 +55,7 @@ def addon():
         function issecretvalue(v) return rawequal(v,SECRET) end
         function canaccesstable(v) return not rawequal(v,SECRET) end
     ''')
-    for filename in ("Core.lua", "Collectors.lua", "Events.lua"):
+    for filename in ("Core.lua", "Collectors.lua", "Pixel.lua", "Events.lua"):
         source = (ROOT / "addon/ForeverHA" / filename).read_text()
         lua.execute("assert(loadstring(...))('ForeverHA',F)", source)
     lua.execute("assert(F.initialize()); F.worldReady=true; F.queue={}; F.pending={}")

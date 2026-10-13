@@ -151,3 +151,57 @@ def test_large_snapshot_fragmented_and_retried(tmp_path, env):
         store.close()
         await hass.async_stop()
     asyncio.run(scenario())
+
+
+def test_persistent_addon_event_dedup_after_restart(tmp_path, env):
+    async def scenario():
+        hass = HomeAssistant(str(tmp_path))
+        runtime = Runtime(hass, None)
+        hass.data[DOMAIN] = runtime
+        emitted = []
+        hass.bus.async_listen("forever_ha_event", lambda event: emitted.append(event.data))
+        event = {"event": "PLAYER_DEAD", "session": "game-login", "sequence": 12, "observed_at": 100}
+        first = env(dataset="addon_events", payload=event)
+        first["source"] = "pixel"
+        await inspect.unwrap(ingest)(hass, Connection(), {"id": 1, "envelopes": [first]})
+        await hass.async_block_till_done()
+        assert len(emitted) == 1
+        restored = Runtime(hass, await runtime.store.async_load())
+        hass.data[DOMAIN] = restored
+        later = env(seq=2, dataset="addon_events", payload=event)
+        await inspect.unwrap(ingest)(hass, Connection(), {"id": 2, "envelopes": [later]})
+        await hass.async_block_till_done()
+        assert len(emitted) == 1
+        assert restored.model.data["addon_event_ranges"]
+        await hass.async_stop()
+    asyncio.run(scenario())
+
+
+def test_live_state_entities_and_feed_freshness(tmp_path, env):
+    import time
+    async def scenario():
+        hass = HomeAssistant(str(tmp_path))
+        runtime = Runtime(hass, None)
+        hass.data[DOMAIN] = runtime
+        record = {"status": "restricted", "payload": {"health": None, "dead": False, "money_copper": 100000}}
+        runtime.model.apply(env(dataset="live_state", payload=record))
+        connection = Connection()
+        diagnostics = {"pixel_feed": {"window": "foreground", "last_seen": time.time(), "character_guid": "Player-1-ABC"}}
+        await inspect.unwrap(heartbeat)(hass, connection, {"id": 1, "installations": ["pc"], "diagnostics": diagnostics})
+        sensors, binaries = [], []
+        await sensor.async_setup_entry(hass, Entry(), sensors.extend)
+        await binary_sensor.async_setup_entry(hass, Entry(), binaries.extend)
+        gold = next(e for e in sensors if e.name == "Live gold")
+        health = next(e for e in sensors if e.name == "Live health")
+        dead = next(e for e in binaries if e.name == "Live dead")
+        assert gold.available and gold.native_value == 10
+        assert not health.available and health.native_value is None
+        assert dead.available and dead.is_on is False
+        feed = runtime.model.data["bridges"]["pc"]["pixel_feed"]
+        feed["character_guid"] = "Player-1-OTHER"
+        assert not gold.available and not dead.available
+        feed["character_guid"] = "Player-1-ABC"
+        feed["last_seen"] = time.time() - 20
+        assert not gold.available
+        await hass.async_stop()
+    asyncio.run(scenario())

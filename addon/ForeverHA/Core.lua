@@ -1,6 +1,6 @@
 local _, F = ...
 F.collectors, F.queue, F.pending, F.windows = {}, {}, {}, {}
-F.VERSION, F.eventLimit = "0.1.1", 5000
+F.VERSION, F.eventLimit = "0.2.0", 5000
 local unpack = unpack or table.unpack
 local function pack(...) return { n = select("#", ...), ... } end
 
@@ -246,6 +246,7 @@ function F.record(event, ...)
     list[#list + 1] = { sequence = F.character.event_sequence, event = event,
         observed_at = F.now(), session = F.character.session, args = args,
         secret_fields = secrets, status = secrets > 0 and "restricted" or "available" }
+    if F.pixel then F.pixel.event(list[#list]) end
 end
 
 function F.print(message)
